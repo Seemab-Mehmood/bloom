@@ -25,48 +25,39 @@
     color: var(--ink);
   }
   #stage{ position:fixed; inset:0; }
-  canvas#art{ position:absolute; inset:0; display:block; width:100%; height:100%; }
+  canvas#art{ position:absolute; inset:0; display:block; width:100%; height:100%; cursor:crosshair; }
 
-  /* ---- camera preview ---- */
-  #camWrap{
-    position:absolute; top:18px; left:18px; z-index:20;
-    width:190px; border:1px solid var(--line);
-    background: rgba(10,13,12,0.55);
-    backdrop-filter: blur(6px);
-    border-radius: 2px;
-    padding:8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  }
-  #camLabel{
-    font-size:9px; letter-spacing:0.14em; text-transform:uppercase;
-    color: var(--ink-dim); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;
-  }
-  #camLabel .dot{
-    width:6px; height:6px; border-radius:50%; background:#e8567a;
-    box-shadow:0 0 6px #e8567a; display:inline-block; margin-right:5px;
-    animation: pulse 1.6s infinite ease-in-out;
-  }
-  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
-  #camBox{ position:relative; width:100%; aspect-ratio: 4/3; overflow:hidden; border:1px solid var(--line); }
+  /* video kept off-screen but alive so MediaPipe can keep decoding frames -
+     the user never sees their own camera image */
   #video{
-    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    position:absolute; left:-9999px; top:-9999px;
+    width:160px; height:120px;
     transform: scaleX(-1);
-    filter: grayscale(0.35) contrast(1.05) brightness(0.9);
   }
-  #gestureTag{
-    position:absolute; left:0; right:0; bottom:0;
-    padding:4px 6px; font-size:11px; text-align:center;
-    background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
-    letter-spacing:0.05em;
+
+  /* ---- tiny status pill (no camera image shown) ---- */
+  #statusPill{
+    position:absolute; top:18px; left:18px; z-index:20;
+    display:flex; align-items:center; gap:8px;
+    border:1px solid var(--line); background: rgba(10,13,12,0.55);
+    backdrop-filter: blur(6px); padding:8px 12px; border-radius:20px;
+    font-size:11px; letter-spacing:0.04em;
   }
-  #gestureTag.up{ color: var(--cyan); }
-  #gestureTag.down{ color: var(--rose); }
-  #gestureTag.none{ color: var(--ink-dim); }
+  #statusPill .dot{
+    width:7px; height:7px; border-radius:50%; background:#8d8a7c; flex-shrink:0;
+  }
+  #statusPill.up .dot{ background: var(--cyan); box-shadow:0 0 8px var(--cyan); }
+  #statusPill.down .dot{ background: var(--rose); box-shadow:0 0 8px var(--rose); }
+  #statusPill .dot.tracking{ animation: pulse 1.6s infinite ease-in-out; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+  #statusText{ color: var(--ink-dim); }
+  #statusPill.up #statusText{ color: var(--cyan); }
+  #statusPill.down #statusText{ color: var(--rose); }
 
   /* ---- HUD ---- */
   #hud{
     position:absolute; right:18px; bottom:18px; z-index:20;
-    width:210px; border:1px solid var(--line);
+    width:230px; border:1px solid var(--line);
     background: rgba(10,13,12,0.55); backdrop-filter: blur(6px);
     padding:12px 14px; border-radius:2px;
   }
@@ -75,12 +66,22 @@
     font-size:14px; letter-spacing:0.02em; color: var(--ink);
     border-bottom: 1px solid var(--line); padding-bottom:6px;
   }
-  #bloomRow{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  #bloomRow{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
   #bloomTrack{ flex:1; height:5px; background: rgba(255,255,255,0.08); position:relative; border-radius:3px; overflow:hidden; }
   #bloomFill{ position:absolute; left:0; top:0; bottom:0; width:0%; background: linear-gradient(90deg, var(--cyan), var(--gold), var(--rose)); }
   #bloomPct{ font-size:11px; width:34px; text-align:right; color: var(--ink-dim); }
-  #hint{ font-size:10.5px; line-height:1.6; color: var(--ink-dim); }
-  #hint b{ color: var(--ink); font-weight:normal; }
+
+  .hudLine{ display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink-dim); margin-bottom:5px; }
+  .hudLine b{ color: var(--ink); font-weight:normal; }
+
+  #saveBtn, #resetBtn{
+    width:100%; margin-top:8px; font-family: var(--mono); font-size:10.5px; letter-spacing:0.06em;
+    text-transform:uppercase; background:transparent; color: var(--ink); border:1px solid var(--line);
+    padding:8px; cursor:pointer; border-radius:2px;
+  }
+  #saveBtn:hover{ border-color: var(--gold); color: var(--gold); }
+  #resetBtn:hover{ border-color: var(--rose); color: var(--rose); }
+  #hint{ font-size:10px; line-height:1.6; color: var(--ink-dim); margin-top:10px; border-top:1px solid var(--line); padding-top:8px;}
 
   /* ---- title ---- */
   #title{
@@ -96,6 +97,16 @@
     display:block; font-family: var(--mono); font-size:9px; letter-spacing:0.28em;
     text-transform:uppercase; color: var(--ink-dim); margin-top:4px;
   }
+
+  /* ---- toast ---- */
+  #toast{
+    position:absolute; top:70px; left:50%; transform:translateX(-50%) translateY(-8px);
+    z-index:40; background: rgba(10,13,12,0.85); border:1px solid var(--line);
+    padding:10px 18px; border-radius:20px; font-size:11.5px; letter-spacing:0.03em;
+    opacity:0; transition: opacity 0.4s ease, transform 0.4s ease; pointer-events:none;
+    backdrop-filter: blur(6px);
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
   /* ---- overlays ---- */
   #overlay{
@@ -125,18 +136,16 @@
 
 <div id="stage">
   <canvas id="art"></canvas>
+  <video id="video" autoplay playsinline muted></video>
 
   <div id="title">
     <h1>Cerebral Garden</h1>
     <span>a gesture-grown organism</span>
   </div>
 
-  <div id="camWrap">
-    <div id="camLabel"><span><span class="dot"></span>LIVE FEED</span><span id="fps">--fps</span></div>
-    <div id="camBox">
-      <video id="video" autoplay playsinline muted></video>
-    </div>
-    <div id="gestureTag" class="none">— no gesture —</div>
+  <div id="statusPill">
+    <span class="dot tracking" id="statusDot"></span>
+    <span id="statusText">sensing…</span>
   </div>
 
   <div id="hud">
@@ -145,17 +154,24 @@
       <div id="bloomTrack"><div id="bloomFill"></div></div>
       <div id="bloomPct">0%</div>
     </div>
+    <div class="hudLine"><span>Session</span><b id="elapsedTime">00:00</b></div>
+    <div class="hudLine"><span>Next relief in</span><b id="burstCountdown">2:00</b></div>
+    <div class="hudLine"><span>Auto-save in</span><b id="saveCountdown">10:00</b></div>
+    <button id="saveBtn">💾 Save garden now</button>
+    <button id="resetBtn">✕ Clear canvas</button>
     <div id="hint">
       <b>👍 Thumbs up</b> — bloom outward<br>
       <b>👎 Thumbs down</b> — wilt inward<br>
-      Move your hand to paint light trails.
+      Move your hand (camera hidden) or drag on screen to paint light trails — they stay.
     </div>
   </div>
+
+  <div id="toast"></div>
 
   <div id="overlay">
     <div class="spinner"></div>
     <h2 id="ovTitle">Loading recognition engine…</h2>
-    <p id="ovText">Fetching the MediaPipe gesture model. This runs entirely in your browser.</p>
+    <p id="ovText">Fetching the MediaPipe gesture model. This runs entirely in your browser. Your camera image is never shown or stored — only your hand position is used.</p>
     <button id="retryBtn" style="display:none;">Try again</button>
   </div>
 </div>
@@ -174,18 +190,44 @@ const overlay = document.getElementById('overlay');
 const ovTitle = document.getElementById('ovTitle');
 const ovText = document.getElementById('ovText');
 const retryBtn = document.getElementById('retryBtn');
-const gestureTag = document.getElementById('gestureTag');
+const statusPill = document.getElementById('statusPill');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
 const bloomFill = document.getElementById('bloomFill');
 const bloomPct = document.getElementById('bloomPct');
-const fpsEl = document.getElementById('fps');
+const elapsedTimeEl = document.getElementById('elapsedTime');
+const burstCountdownEl = document.getElementById('burstCountdown');
+const saveCountdownEl = document.getElementById('saveCountdown');
+const saveBtn = document.getElementById('saveBtn');
+const resetBtn = document.getElementById('resetBtn');
+const toast = document.getElementById('toast');
 
 // ---------- canvas sizing ----------
 let W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+// persistent drawing layer - never cleared, holds everything the user "paints"
+let layer = document.createElement('canvas');
+let layerCtx = layer.getContext('2d');
+
 function resize(){
+  const oldLayer = layer;
+  const oldW = W, oldH = H;
   W = window.innerWidth; H = window.innerHeight;
+
   canvas.width = W * DPR; canvas.height = H * DPR;
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
+
+  const newLayer = document.createElement('canvas');
+  newLayer.width = W * DPR; newLayer.height = H * DPR;
+  const newCtx = newLayer.getContext('2d');
+  newCtx.setTransform(DPR,0,0,DPR,0,0);
+  if(oldW && oldH){
+    // best-effort: stretch old persistent art onto the new size so nothing is lost
+    newCtx.drawImage(oldLayer, 0, 0, oldW*DPR, oldH*DPR, 0, 0, W, H);
+  }
+  layer = newLayer; layerCtx = newCtx;
+
   buildHeadPath();
   buildFlowerSites();
 }
@@ -195,73 +237,49 @@ window.addEventListener('resize', resize);
 let bloomState = 0.0;
 let bloomTarget = 0.0;
 let lastGesture = 'None';
-let gestureScore = 0;
-let gestureHold = 0; // frames of consistent gesture, for hysteresis
+let gestureHold = 0;
 const HOLD_NEEDED = 3;
-
-const trail = []; // {x,y,t}
-const MAX_TRAIL = 900;
 
 let gestureRecognizer = null;
 let lastVideoTime = -1;
 let running = false;
+let lastTrailPoint = null;
 
-// fps tracking
-let frameCount = 0, lastFpsT = performance.now();
+// timers
+const SESSION_START = performance.now();
+const SAVE_INTERVAL_MS = 10 * 60 * 1000;   // 10 minutes
+const BURST_INTERVAL_MS = 2 * 60 * 1000;   // 2 minutes
+const BURST_DURATION_MS = 7000;
+let nextSaveAt = SESSION_START + SAVE_INTERVAL_MS;
+let nextBurstAt = SESSION_START + BURST_INTERVAL_MS;
+let burstActive = false;
+let burstStart = 0;
+let saveCount = 0;
 
-// ---------- head profile geometry (built relative to canvas size) ----------
-let headPath = null;      // Path2D-ish set of points for stroking
-let brainOpening = null;  // {x,y,w} region where flowers emerge
+// ---------- head profile geometry ----------
+let headPath = null, brainOpening = null;
 let headAnchor = { x:0, y:0, scale:1 };
 
 function buildHeadPath(){
-  // Anchor the head profile left-of-center, facing right, sized relative to viewport height
   const scale = Math.min(H, W*0.9) * 0.62;
   const cx = W * 0.36;
   const cy = H * 0.56;
   headAnchor = { x: cx, y: cy, scale };
 
-  // Normalized profile points (facing right), designed as a side head/neck silhouette
-  // Coordinates roughly in range [-0.5,0.5] x, [-0.6,0.6] y, will be scaled.
   const pts = [
-    [-0.10, -0.58], // crown back-top (opening starts)
-    [ 0.06, -0.55], // crown front-top (opening ends)
-    [ 0.20, -0.44], // forehead top
-    [ 0.27, -0.28], // forehead
-    [ 0.25, -0.14], // brow
-    [ 0.30, -0.06], // nose bridge
-    [ 0.34,  0.02], // nose tip
-    [ 0.28,  0.06], // nostril
-    [ 0.29,  0.11], // upper lip
-    [ 0.25,  0.15], // mouth
-    [ 0.26,  0.19], // lower lip
-    [ 0.20,  0.24], // chin top
-    [ 0.16,  0.30], // chin
-    [ 0.06,  0.33], // jaw
-    [-0.06,  0.34], // jaw back
-    [-0.14,  0.32], // under jaw
-    [-0.12,  0.40], // neck front
-    [-0.14,  0.58], // neck front low
-    [-0.30,  0.60], // neck base
-    [-0.34,  0.44], // neck back
-    [-0.33,  0.20], // back of head lower
-    [-0.36,  0.00], // back of head
-    [-0.32, -0.22], // back of head upper
-    [-0.24, -0.42], // back crown
-    [-0.10, -0.58], // close to crown back-top
+    [-0.10, -0.58],[ 0.06, -0.55],[ 0.20, -0.44],[ 0.27, -0.28],[ 0.25, -0.14],
+    [ 0.30, -0.06],[ 0.34,  0.02],[ 0.28,  0.06],[ 0.29,  0.11],[ 0.25,  0.15],
+    [ 0.26,  0.19],[ 0.20,  0.24],[ 0.16,  0.30],[ 0.06,  0.33],[-0.06,  0.34],
+    [-0.14,  0.32],[-0.12,  0.40],[-0.14,  0.58],[-0.30,  0.60],[-0.34,  0.44],
+    [-0.33,  0.20],[-0.36,  0.00],[-0.32, -0.22],[-0.24, -0.42],[-0.10, -0.58],
   ];
-  headPath = pts.map(([x,y]) => ({
-    x: cx + x*scale,
-    y: cy + y*scale
-  }));
+  headPath = pts.map(([x,y]) => ({ x: cx + x*scale, y: cy + y*scale }));
 
-  // ear (simple loop) placed near jaw
   const earPts = [
     [-0.11, -0.02],[-0.02,-0.06],[0.03,0.00],[0.02,0.09],[-0.05,0.12],[-0.12,0.07],[-0.11,-0.02]
   ].map(([x,y]) => ({ x: cx + x*scale, y: cy + y*scale }));
   headAnchor.ear = earPts;
 
-  // brain opening region (top of skull, between crown pts 0 and 1) — flowers emerge here
   const openA = headPath[0], openB = headPath[1];
   brainOpening = {
     x: (openA.x + openB.x)/2,
@@ -271,30 +289,28 @@ function buildHeadPath(){
   };
 }
 
-function smoothPath(ctx, pts, closeLoop=false){
+function smoothPath(c, pts, closeLoop=false){
   if(pts.length < 3) return;
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
+  c.beginPath();
+  c.moveTo(pts[0].x, pts[0].y);
   for(let i=1;i<pts.length-1;i++){
     const midX = (pts[i].x + pts[i+1].x)/2;
     const midY = (pts[i].y + pts[i+1].y)/2;
-    ctx.quadraticCurveTo(pts[i].x, pts[i].y, midX, midY);
+    c.quadraticCurveTo(pts[i].x, pts[i].y, midX, midY);
   }
-  ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
-  if(closeLoop) ctx.closePath();
+  c.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+  if(closeLoop) c.closePath();
 }
 
-function drawHead(t){
+function drawHead(){
   ctx.save();
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
 
-  // faint brain glow behind opening, intensifies with bloom
   const g = ctx.createRadialGradient(
     brainOpening.x, brainOpening.y+brainOpening.scale*0.12, 4,
     brainOpening.x, brainOpening.y+brainOpening.scale*0.12, brainOpening.scale*0.5
   );
-  const hue = lerp(178, 340, bloomState); // cyan -> rose
+  const hue = lerp(178, 340, bloomState);
   g.addColorStop(0, `hsla(${hue},70%,60%,${0.10+0.22*bloomState})`);
   g.addColorStop(1, `hsla(${hue},70%,60%,0)`);
   ctx.fillStyle = g;
@@ -302,19 +318,16 @@ function drawHead(t){
   ctx.arc(brainOpening.x, brainOpening.y+brainOpening.scale*0.12, brainOpening.scale*0.5, 0, Math.PI*2);
   ctx.fill();
 
-  // head silhouette line-art
   ctx.strokeStyle = 'rgba(233,227,211,0.72)';
   ctx.lineWidth = 1.4;
   smoothPath(ctx, headPath, true);
   ctx.stroke();
 
-  // ear
   ctx.strokeStyle = 'rgba(233,227,211,0.5)';
   ctx.lineWidth = 1;
   smoothPath(ctx, headAnchor.ear, true);
   ctx.stroke();
 
-  // subtle interior contour lines (like a schematic anatomical plate) - neck fold, jaw line accent
   ctx.strokeStyle = 'rgba(233,227,211,0.18)';
   ctx.lineWidth = 0.8;
   const s = headAnchor.scale, cx = headAnchor.x, cy = headAnchor.y;
@@ -323,7 +336,6 @@ function drawHead(t){
   ctx.quadraticCurveTo(cx + 0.02*s, cy - 0.10*s, cx - 0.02*s, cy + 0.05*s);
   ctx.stroke();
 
-  // sutures near crown opening (cracked-open cranium effect)
   ctx.strokeStyle = `hsla(${hue},60%,70%,${0.35+0.4*bloomState})`;
   ctx.lineWidth = 1;
   const oa = headPath[0], ob = headPath[1];
@@ -333,18 +345,17 @@ function drawHead(t){
   ctx.moveTo(ob.x, ob.y);
   ctx.lineTo(ob.x + s*0.02, ob.y - s*0.05*(0.4+bloomState));
   ctx.stroke();
-
   ctx.restore();
 }
 
-// ---------- procedural flowers ----------
+// ---------- procedural flowers (brain bloom) ----------
 let flowerSites = [];
 function buildFlowerSites(){
   if(!brainOpening) return;
   flowerSites = [];
   const n = 6;
   for(let i=0;i<n;i++){
-    const spread = (i/(n-1) - 0.5); // -0.5..0.5
+    const spread = (i/(n-1) - 0.5);
     flowerSites.push({
       baseX: brainOpening.x + spread * brainOpening.w * 1.6,
       baseY: brainOpening.y + Math.abs(spread)*brainOpening.scale*0.05,
@@ -363,19 +374,13 @@ function drawFlower(site, bloom, t){
   const s = headAnchor.scale;
   const stemLen = s * 0.42 * bloom * site.heightMul;
   const sway = Math.sin(t*0.0009 + site.swaySeed) * 0.05 * s * bloom;
-
-  const baseX = site.baseX;
-  const baseY = site.baseY;
-  const tipX = baseX + sway * 0.6;
-  const tipY = baseY - stemLen;
-  const ctrlX = baseX + sway;
-  const ctrlY = baseY - stemLen*0.55;
-
+  const baseX = site.baseX, baseY = site.baseY;
+  const tipX = baseX + sway * 0.6, tipY = baseY - stemLen;
+  const ctrlX = baseX + sway, ctrlY = baseY - stemLen*0.55;
   const hue = lerp(172, 330, bloom) + site.hueShift;
   const stemAlpha = 0.5 + 0.4*bloom;
 
   ctx.save();
-  // stem
   ctx.strokeStyle = `hsla(${lerp(150,120,bloom)}, 45%, ${lerp(35,45,bloom)}%, ${stemAlpha})`;
   ctx.lineWidth = Math.max(1, 2.2*bloom);
   ctx.lineCap = 'round';
@@ -384,7 +389,6 @@ function drawFlower(site, bloom, t){
   ctx.quadraticCurveTo(ctrlX, ctrlY, tipX, tipY);
   ctx.stroke();
 
-  // small leaves along stem
   if(bloom > 0.25){
     const leafT = 0.55;
     const lx = baseX + (ctrlX-baseX)*leafT*0.9;
@@ -399,10 +403,9 @@ function drawFlower(site, bloom, t){
     }
   }
 
-  // flower head at tip
   const petals = site.petals;
   const petalLen = s * 0.085 * bloom * site.sizeMul;
-  const petalOpenEase = easeOutCubic(bloom);
+  const petalOpenEase = 1 - Math.pow(1-bloom,3);
   for(let i=0;i<petals;i++){
     const ang = (i/petals) * Math.PI*2 + site.seed;
     const px = tipX + Math.cos(ang) * petalLen * petalOpenEase;
@@ -423,7 +426,6 @@ function drawFlower(site, bloom, t){
     ctx.stroke();
   }
 
-  // flower center glow
   ctx.fillStyle = `hsla(${hue+20},85%,70%,${0.65*bloom})`;
   ctx.shadowColor = `hsla(${hue+20},90%,65%,${0.8*bloom})`;
   ctx.shadowBlur = 14*bloom;
@@ -432,96 +434,214 @@ function drawFlower(site, bloom, t){
   ctx.fill();
   ctx.restore();
 }
+function drawFlowers(t){ for(const site of flowerSites) drawFlower(site, bloomState, t); }
 
-function drawFlowers(t){
-  for(const site of flowerSites){
-    drawFlower(site, bloomState, t);
-  }
-}
-
-// ---------- hand trail ----------
-function pushTrailPoint(nx, ny, t){
-  // mirror x because video is mirrored for a natural "mirror" feel
-  const x = (1 - nx) * W;
-  const y = ny * H;
-  trail.push({ x, y, t });
-  if(trail.length > MAX_TRAIL) trail.shift();
-}
-
-function drawTrail(t){
-  if(trail.length < 2) return;
-  ctx.save();
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
+// ---------- persistent hand-drawn trail (painted onto `layer`, never cleared) ----------
+function paintTrailSegment(x0,y0,x1,y1,t){
   const hue = lerp(190, 40, bloomState);
-  for(let i=1;i<trail.length;i++){
-    const p0 = trail[i-1], p1 = trail[i];
-    const age = (t - p1.t) / 9000; // fades over ~9s
-    const alpha = Math.max(0, 1-age);
-    if(alpha <= 0) continue;
-    ctx.strokeStyle = `hsla(${hue}, 85%, 66%, ${alpha*0.55})`;
-    ctx.shadowColor = `hsla(${hue}, 90%, 60%, ${alpha*0.7})`;
-    ctx.shadowBlur = 8;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.lineTo(p1.x, p1.y);
-    ctx.stroke();
+  layerCtx.save();
+  layerCtx.lineJoin = 'round'; layerCtx.lineCap = 'round';
+  layerCtx.strokeStyle = `hsla(${hue}, 85%, 66%, 0.5)`;
+  layerCtx.shadowColor = `hsla(${hue}, 90%, 60%, 0.65)`;
+  layerCtx.shadowBlur = 8;
+  layerCtx.lineWidth = 1.8;
+  layerCtx.beginPath();
+  layerCtx.moveTo(x0,y0);
+  layerCtx.lineTo(x1,y1);
+  layerCtx.stroke();
+  layerCtx.restore();
+}
+
+function pushTrailPoint(nx, ny, t, mirrored=true){
+  const x = mirrored ? (1 - nx) * W : nx;
+  const y = ny * H;
+  if(lastTrailPoint && (t - lastTrailPoint.t) < 400){
+    const dist = Math.hypot(x-lastTrailPoint.x, y-lastTrailPoint.y);
+    if(dist < W*0.6) paintTrailSegment(lastTrailPoint.x, lastTrailPoint.y, x, y, t);
   }
+  lastTrailPoint = { x, y, t };
+}
+
+// ---- mouse/touch drawing fallback so the person can always interact, camera or not ----
+let pointerDown = false;
+canvas.addEventListener('pointerdown', e => { pointerDown = true; lastTrailPoint = null; pushTrailPoint(e.clientX, e.clientY, performance.now(), false); });
+canvas.addEventListener('pointermove', e => { if(pointerDown) pushTrailPoint(e.clientX, e.clientY, performance.now(), false); });
+window.addEventListener('pointerup', () => { pointerDown = false; });
+
+// ---------- 3D-style relief bloom burst (every 2 minutes) ----------
+function drawPseudo3DFlower(x,y,size,scaleX,shade,seed,t){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.scale(scaleX,1);
+  const petals = 8;
+  const hue = [265, 155, 25, 195, 320, 90][seed % 6];
+  for(let p=0;p<petals;p++){
+    const pang = (p/petals)*Math.PI*2 + t*0.0003;
+    const px = Math.cos(pang)*size;
+    const py = Math.sin(pang)*size;
+    ctx.beginPath();
+    ctx.ellipse(px*0.55, py*0.55, size*0.36, size*0.16, pang, 0, Math.PI*2);
+    ctx.fillStyle = `hsla(${hue},70%,${50+shade*22}%,${0.30+0.35*shade})`;
+    ctx.fill();
+  }
+  ctx.beginPath();
+  ctx.arc(0,0,size*0.16,0,Math.PI*2);
+  ctx.fillStyle = `hsla(${hue+30},85%,78%,0.85)`;
+  ctx.shadowColor = `hsla(${hue+30},95%,72%,0.9)`;
+  ctx.shadowBlur = 24;
+  ctx.fill();
   ctx.restore();
-  // prune very old points occasionally
-  while(trail.length && (t - trail[0].t) > 12000) trail.shift();
+}
+
+function drawBurst(t){
+  const elapsed = t - burstStart;
+  const ratio = Math.min(1, elapsed / BURST_DURATION_MS);
+  let alpha = 1;
+  if(ratio < 0.12) alpha = ratio/0.12;
+  else if(ratio > 0.82) alpha = Math.max(0,(1-ratio)/0.18);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const pulse = 0.5+0.5*Math.sin(t*0.0018);
+  const g = ctx.createRadialGradient(W/2,H/2,0, W/2,H/2, Math.max(W,H)*0.75);
+  g.addColorStop(0, `hsla(${lerp(255,205,pulse)},55%,20%,0.6)`);
+  g.addColorStop(1, 'hsla(0,0%,2%,0.9)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,H);
+
+  const count = 6;
+  for(let i=0;i<count;i++){
+    const ang = (i/count)*Math.PI*2 + t*0.00018;
+    const orbitR = Math.min(W,H)*0.30;
+    const fx = W/2 + Math.cos(ang)*orbitR;
+    const fy = H/2 + Math.sin(ang)*orbitR*0.55;
+    const rot = t*(0.0006+i*0.00004) + i*1.3;
+    const scaleX = Math.cos(rot);
+    const shade = 0.5+0.5*Math.cos(rot);
+    drawPseudo3DFlower(fx, fy, 46 + i*5, scaleX, shade, i, t);
+  }
+
+  // gentle floating particles
+  for(let i=0;i<24;i++){
+    const seed = i*137.5;
+    const px = (Math.sin(t*0.0002 + seed) * 0.5 + 0.5) * W;
+    const py = H - ((t*0.02 + seed*40) % (H+60));
+    ctx.fillStyle = `hsla(${190+ (i%5)*20},80%,75%,${0.25*alpha})`;
+    ctx.beginPath();
+    ctx.arc(px, py, 1.6, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  const cyc = (t % 8000)/8000;
+  const breatheIn = cyc < 0.5;
+  ctx.fillStyle = `rgba(233,227,211,${0.55*alpha})`;
+  ctx.font = "italic 28px Georgia, serif";
+  ctx.textAlign = 'center';
+  ctx.fillText(breatheIn ? 'breathe in…' : 'breathe out…', W/2, H*0.5);
+  ctx.font = "10px 'Courier New', monospace";
+  ctx.fillStyle = `rgba(141,138,124,${0.7*alpha})`;
+  ctx.fillText('a small moment of relief', W/2, H*0.5 + 26);
+  ctx.restore();
 }
 
 // ---------- utils ----------
 function lerp(a,b,t){ return a + (b-a)*t; }
-function easeOutCubic(t){ return 1 - Math.pow(1-t,3); }
+function fmt(ms){
+  const s = Math.max(0, Math.ceil(ms/1000));
+  const m = Math.floor(s/60);
+  const r = s%60;
+  return `${m}:${r.toString().padStart(2,'0')}`;
+}
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>toast.classList.remove('show'), 3200);
+}
+
+// ---------- save / reset ----------
+function saveArt(auto=false){
+  // composite: current animated canvas already contains background+head+flowers+persistent layer
+  const url = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  saveCount++;
+  const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+  a.href = url;
+  a.download = `cerebral-garden_${stamp}.png`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  showToast(auto ? '🌸 10-minute mark — your garden was saved & downloaded' : '💾 Garden saved & downloaded');
+}
+saveBtn.addEventListener('click', () => saveArt(false));
+resetBtn.addEventListener('click', () => {
+  layerCtx.clearRect(0,0,W,H);
+  showToast('✕ Canvas cleared — new growth begins');
+});
 
 // ---------- main render loop ----------
+let frameCount = 0, lastFpsT = performance.now();
 function render(now){
   ctx.clearRect(0,0,W,H);
 
-  // background vignette wash
   const bg = ctx.createRadialGradient(W*0.5,H*0.4,0, W*0.5,H*0.4, Math.max(W,H)*0.75);
   bg.addColorStop(0, 'rgba(15,20,18,1)');
   bg.addColorStop(1, 'rgba(8,10,9,1)');
   ctx.fillStyle = bg;
   ctx.fillRect(0,0,W,H);
 
-  drawTrail(now);
-  drawHead(now);
+  drawHead();
   drawFlowers(now);
+  // composite the permanent hand-drawn layer on top so trails persist forever
+  ctx.drawImage(layer, 0, 0, W, H);
 
-  // ---- bloomState lerp toward target, frame-rate independent ----
-  const lerpSpeed = 1 - Math.pow(0.0015, 1/60); // approximate smooth factor
+  // bloomState lerp
+  const lerpSpeed = 1 - Math.pow(0.0015, 1/60);
   bloomState += (bloomTarget - bloomState) * Math.min(1, lerpSpeed*2.2);
   bloomState = Math.min(1, Math.max(0, bloomState));
-
   bloomFill.style.width = (bloomState*100).toFixed(0) + '%';
   bloomPct.textContent = Math.round(bloomState*100) + '%';
 
-  // fps
-  frameCount++;
-  if(now - lastFpsT > 500){
-    const fps = Math.round(frameCount / ((now-lastFpsT)/1000));
-    fpsEl.textContent = fps + 'fps';
-    frameCount = 0; lastFpsT = now;
+  // ---- timers: relief burst every 2 min, auto-save every 10 min ----
+  if(!burstActive && now >= nextBurstAt){
+    burstActive = true; burstStart = now;
+    showToast('🌸 A moment of relief…');
   }
+  if(burstActive){
+    drawBurst(now);
+    if(now - burstStart >= BURST_DURATION_MS){
+      burstActive = false;
+      nextBurstAt = now + BURST_INTERVAL_MS;
+    }
+  }
+  if(now >= nextSaveAt){
+    saveArt(true);
+    nextSaveAt = now + SAVE_INTERVAL_MS;
+  }
+
+  elapsedTimeEl.textContent = fmt(now - SESSION_START).padStart(5,'0');
+  burstCountdownEl.textContent = fmt(nextBurstAt - now);
+  saveCountdownEl.textContent = fmt(nextSaveAt - now);
+
+  frameCount++;
+  if(now - lastFpsT > 2000){ frameCount = 0; lastFpsT = now; }
 
   if(running) requestAnimationFrame(render);
 }
 
-// ---------- gesture recognition loop ----------
-function updateGestureUI(name, score){
+// ---------- gesture recognition loop (camera processed but never displayed) ----------
+function updateStatusUI(name, score){
+  statusDot.classList.remove('tracking');
   if(name === 'Thumb_Up'){
-    gestureTag.textContent = `👍 Thumb Up  (${Math.round(score*100)}%)`;
-    gestureTag.className = 'up';
+    statusPill.className = 'up';
+    statusText.textContent = `👍 blooming  ${Math.round(score*100)}%`;
   } else if(name === 'Thumb_Down'){
-    gestureTag.textContent = `👎 Thumb Down  (${Math.round(score*100)}%)`;
-    gestureTag.className = 'down';
+    statusPill.className = 'down';
+    statusText.textContent = `👎 wilting  ${Math.round(score*100)}%`;
   } else {
-    gestureTag.textContent = '— no gesture —';
-    gestureTag.className = 'none';
+    statusPill.className = '';
+    statusDot.classList.add('tracking');
+    statusText.textContent = 'sensing…';
   }
 }
 
@@ -532,7 +652,6 @@ function predictLoop(){
     const t = performance.now();
     const result = gestureRecognizer.recognizeForVideo(video, t);
 
-    // gesture -> bloom target with simple hysteresis
     let name = 'None', score = 0;
     if(result.gestures && result.gestures.length > 0 && result.gestures[0].length > 0){
       name = result.gestures[0][0].categoryName;
@@ -540,20 +659,16 @@ function predictLoop(){
     }
     if(score > 0.55 && (name === 'Thumb_Up' || name === 'Thumb_Down')){
       if(name === lastGesture){ gestureHold++; } else { gestureHold = 1; lastGesture = name; }
-      if(gestureHold >= HOLD_NEEDED){
-        bloomTarget = name === 'Thumb_Up' ? 1.0 : 0.0;
-      }
+      if(gestureHold >= HOLD_NEEDED) bloomTarget = name === 'Thumb_Up' ? 1.0 : 0.0;
     } else {
-      lastGesture = 'None';
-      gestureHold = 0;
+      lastGesture = 'None'; gestureHold = 0;
     }
-    updateGestureUI(gestureHold >= HOLD_NEEDED ? lastGesture : 'None', score);
+    updateStatusUI(gestureHold >= HOLD_NEEDED ? lastGesture : 'None', score);
 
-    // hand centroid / index fingertip (landmark 8) trail
     if(result.landmarks && result.landmarks.length > 0){
       const lm = result.landmarks[0];
       const tip = lm[8] || lm[0];
-      pushTrailPoint(tip.x, tip.y, t);
+      pushTrailPoint(tip.x, tip.y, t, true);
     }
   }
   requestAnimationFrame(predictLoop);
@@ -562,7 +677,7 @@ function predictLoop(){
 // ---------- setup ----------
 async function setup(){
   try{
-    showOverlay('Loading recognition engine…', 'Fetching the MediaPipe gesture model. This runs entirely in your browser.', false);
+    showOverlay('Loading recognition engine…', 'Fetching the MediaPipe gesture model. This runs entirely in your browser. Your camera image is never shown or stored — only your hand position is used.', false);
     const vision = await FilesetResolver.forVisionTasks(
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
     );
@@ -575,7 +690,7 @@ async function setup(){
       numHands: 1
     });
 
-    showOverlay('Requesting camera access…', 'Please allow camera permissions when prompted. Nothing leaves your device.', false);
+    showOverlay('Requesting camera access…', 'Please allow camera permissions when prompted. The feed is processed privately in-browser and is never displayed on screen.', false);
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { width: 640, height: 480, facingMode: 'user' },
       audio: false
@@ -588,15 +703,20 @@ async function setup(){
     running = true;
     requestAnimationFrame(render);
     requestAnimationFrame(predictLoop);
+    showToast('🌱 Garden started — draw with your hand or drag on screen');
   } catch(err){
     console.error(err);
-    let msg = 'Something went wrong while starting the camera or model.';
+    let msg = 'Something went wrong while starting the camera or model. You can still draw with your mouse or finger once dismissed.';
     if(err && err.name === 'NotAllowedError'){
-      msg = 'Camera access was denied. Please allow camera permissions in your browser settings and try again.';
+      msg = 'Camera access was denied. You can still interact by dragging on screen — gestures just won\u2019t control the bloom.';
     } else if(err && err.name === 'NotFoundError'){
-      msg = 'No camera was found on this device.';
+      msg = 'No camera was found on this device. You can still interact by dragging on screen.';
     }
-    showOverlay('Unable to start', msg, true);
+    showOverlay('Camera unavailable', msg, true);
+    // allow drawing-only mode even without camera
+    resize();
+    running = true;
+    requestAnimationFrame(render);
   }
 }
 
@@ -608,8 +728,7 @@ function showOverlay(title, text, showRetry){
   overlay.querySelector('.spinner').style.display = showRetry ? 'none' : 'block';
 }
 function hideOverlay(){ overlay.classList.add('hidden'); }
-
-retryBtn.addEventListener('click', () => { setup(); });
+retryBtn.addEventListener('click', () => { hideOverlay(); setup(); });
 
 resize();
 setup();
