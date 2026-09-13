@@ -1,0 +1,13 @@
+{
+  "name": "molab-cerebral-garden",
+  "version": "1.0.0",
+  "description": "MoLab Cerebral Garden — gesture-controlled garden art experience, gated behind a Rs. 110 / 3-minute-session payment.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
